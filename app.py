@@ -7,9 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/15zwiHopG6xKMSIb4RTs_p86T5uNczkRO
 """
 
-# INSTALASI LIBRARY
-!pip install nltk scikit-learn pandas numpy ipywidgets -q
-
 import kagglehub
 
 # Download latest version
@@ -135,8 +132,6 @@ if prompt:
     st.chat_message("user").write(prompt)
     response = get_bot_response(prompt)
     st.chat_message("assistant").write(response)
-
-pip install streamlit
 
 import streamlit as st
 import kagglehub
