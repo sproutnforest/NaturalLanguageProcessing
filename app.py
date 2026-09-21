@@ -26,8 +26,6 @@ from nltk.stem import WordNetLemmatizer
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import ipywidgets as widgets
-from IPython.display import display
 
 # Download necessary NLTK data
 nltk.download('punkt')
