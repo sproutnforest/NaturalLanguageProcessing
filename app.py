@@ -133,7 +133,6 @@ if prompt:
     response = get_bot_response(prompt)
     st.chat_message("assistant").write(response)
 
-import streamlit as st
 import kagglehub
 import pandas as pd
 import numpy as np
@@ -148,12 +147,11 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# --- Page Configuration ---
+# --- App Setup ---
 st.set_page_config(page_title="Medical Chatbot", page_icon="🩺")
 st.title("🩺 Medical Assistant Chatbot")
-st.write("Ask a health-related question or describe symptoms below.")
 
-# --- NLTK & Resource Setup ---
+# --- NLTK Setup ---
 @st.cache_resource
 def load_nltk():
     nltk.download('punkt')
@@ -165,81 +163,64 @@ load_nltk()
 lemmatizer = WordNetLemmatizer()
 english_stopwords = set(stopwords.words('english'))
 
-# --- Preprocessing Function ---
 def preprocess_text(text):
     if not isinstance(text, str):
         return ""
-    # 1. Normalization
     text = text.lower()
     text = text.translate(str.maketrans('', '', string.punctuation))
-
-    # 2. Tokenization
     tokens = word_tokenize(text)
-
-    # Stopwords removal
     tokens = [w for w in tokens if w not in english_stopwords]
-
-    # 3. Lemmatization
     lemmatized_tokens = [lemmatizer.lemmatize(token) for token in tokens]
-
     return " ".join(lemmatized_tokens)
 
-# --- Load Dataset & Model ---
+# --- Load Dataset & Vectorizer ---
 @st.cache_data
-def load_model_and_data():
+def load_data():
     path = kagglehub.dataset_download("saifulislamsarfaraz/medical-chatbot-dataset")
     files = os.listdir(path)
     csv_file = [f for f in files if f.endswith('.csv')][0]
     df = pd.read_csv(os.path.join(path, csv_file))
-
-    # Handle missing values
+    
     df = df.dropna(subset=['short_question', 'short_answer']).reset_index(drop=True)
-
-    # Preprocess questions
     df['clean_input'] = df['short_question'].apply(preprocess_text)
-
-    # Fit TF-IDF Vectorizer
+    
     vectorizer = TfidfVectorizer()
     tfidf_matrix = vectorizer.fit_transform(df['clean_input'])
-
+    
     return df, vectorizer, tfidf_matrix
 
-df, vectorizer, tfidf_matrix = load_model_and_data()
+df, vectorizer, tfidf_matrix = load_data()
 
-# --- Response Function ---
+# --- Search Engine ---
 def get_bot_response(user_query, threshold=0.1):
     clean_query = preprocess_text(user_query)
     if not clean_query:
         return "Please enter a valid question or describe your symptoms."
-
+    
     query_vector = vectorizer.transform([clean_query])
     similarities = cosine_similarity(query_vector, tfidf_matrix).flatten()
-
+    
     best_match_idx = np.argmax(similarities)
     best_score = similarities[best_match_idx]
-
+    
     if best_score < threshold:
         return "I'm sorry, I couldn't find relevant medical information for that. Could you rephrase your question?"
-
+    
     return df.iloc[best_match_idx]['short_answer']
 
-# --- Chat Interface (Streamlit) ---
+# --- Streamlit Chat UI ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Render chat history
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Chat Input Box
 if prompt := st.chat_input("Ask a medical question..."):
-    # Display user message
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Get and display bot response
     response = get_bot_response(prompt)
     st.session_state.messages.append({"role": "assistant", "content": response})
     with st.chat_message("assistant"):
